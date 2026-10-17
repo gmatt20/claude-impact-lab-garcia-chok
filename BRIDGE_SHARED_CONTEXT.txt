@@ -1,0 +1,70 @@
+BRIDGE — SHARED PRODUCT & ENGINEERING CONTEXT
+Hackathon: Claude Community / Orange County Impact Lab
+Duration: 5 hours | Team: 2 developers | Approach: Kotlin-first, web-first, mobile-ready
+
+MISSION
+Bridge helps people experiencing homelessness identify appropriate community resources and take one manageable next step, while preserving independence and offering optional caseworker assistance. It is NOT a substitute for caseworkers, crisis responders, clinicians, or verified service providers.
+
+AUDIENCE AND ASSUMPTIONS
+- Primary: people experiencing homelessness or housing instability, including people transitioning from recuperative care.
+- Secondary: IHH frontline staff/caseworkers who can introduce Bridge and help when requested.
+- Assumption for hackathon: user has intermittent or adequate internet and a device; do NOT pretend every client has these.
+- Default: no account, no required phone number, no medical-document upload, no unnecessary sensitive data.
+- Users choose goals and control what is shared. Use non-judgmental, non-patronizing, trauma-informed language.
+
+SCOPE: ONE DEMO USER JOURNEY
+1. Choose language (English/Spanish) and a goal (sleep/shelter, food, health, work, other).
+2. Optional plain-language question, ONE at a time, about practical constraints (city, transportation, urgency); allow skip.
+3. Retrieve 1–3 real, locally curated resources from verified records.
+4. Show why each might fit, and explicitly disclose unverified eligibility/openings/hours.
+5. Provide ONE immediately actionable next step: phone, website, questions to ask, checklist, and/or printable summary.
+6. If no match or attempt failed, say so plainly and show an alternative or request caseworker assistance.
+
+SAFETY & TRUST
+- Never claim a resource has shelter beds, accepts a referral, guarantees eligibility, or is open NOW unless confirmed by an authorized real-time source.
+- AI may interpret needs and phrase questions/explanations; it must NOT fabricate contacts, services, locations, availability, or medical guidance.
+- Match ONLY against approved resource records. Show source URL and last-verified date; label status unknown if stale.
+- Do not perform medical triage or make clinical eligibility/placement decisions. For emergencies, give locally appropriate emergency instructions and human support routes, without pretending Bridge can dispatch assistance.
+- If official IHH/partner data is provided, inspect usage restrictions first. Use synthetic/non-identifying examples in the demo. Do not send PHI or identifiable client information to Claude without explicit permission and an appropriately approved data-handling arrangement.
+- Don't store raw conversations by default. Minimize logs; redact sensitive input. API keys are server-only.
+- Do not gamify homelessness, guilt users, or imply that inability to take action is a personal failure.
+
+ACCESSIBILITY / DESIGN
+- Mobile-first, readable large text (>=16px equivalent), strong contrast, generous spacing, large touch targets (~44px minimum), clear labels, and screen-reader semantics.
+- Plain language; short paragraphs; one question/action per view; obvious Back, Skip, Start over controls.
+- Text-first; voice OPTIONAL only if time permits; never rely on audio, map, GPS, or images as the sole access path.
+- English and Spanish UI/copy; allow language switching without losing progress. Don't assume literacy, tech familiarity, or unrestricted mobile data.
+- Respect user-selected need (don't overrule employment with shelter unless immediate safety needs are raised); offer options and explain choices.
+- Confirm before external navigation/phone call; never auto-contact providers or staff.
+
+TECHNICAL APPROACH
+- Kotlin Multiplatform for shared DTOs, validation, and optionally reusable Compose Multiplatform UI.
+- Kotlin/Ktor server hosts the Claude integration and curated resource data.
+- Web demo FIRST. Android and iOS are follow-on targets, not mandatory for this 5-hour MVP.
+- Kotlin/Wasm web support can carry toolchain/browser constraints: establish a running web build immediately; if blocked, agree on a simpler Kotlin-compatible web fallback rather than burn the hackathon.
+- Keep client/server boundaries unambiguous. Keep shared business DTOs independent of platform APIs.
+
+AGREED MVP API CONTRACT (adjust together once, in first 20 minutes)
+POST /api/intake
+  request: {"message":"...","language":"en","context":{"city":"Anaheim","goal":"shelter"}}
+  response: {"need":"shelter","city":"Anaheim","constraints":[],"followUpQuestion":null,"needsHumanHelp":false}
+POST /api/match
+  request: {"need":"shelter","city":"Anaheim","constraints":[],"language":"en"}
+  response: {"resources":[{"id":"res-1","name":"Example resource","description":"...","phone":null,"website":null,"address":null,"eligibilityNotes":"Must confirm","availability":"unknown","sourceUrl":"https://example.org","lastVerified":"2026-10-17","fitExplanation":"..."}],"disclaimer":"Confirm eligibility and availability directly."}
+POST /api/plan
+  request: {"resourceId":"res-1","language":"en","constraints":[]}
+  response: {"title":"Your next step","steps":["Contact the provider to confirm eligibility"],"questionsToAsk":["Are services available?"],"alternatives":[],"staffSummary":null}
+Note: Sample resource is a SCHEMA PLACEHOLDER, NOT A REAL SERVICE. Never show fictional resources in actual end-user demo.
+
+TEAM AGREEMENTS
+- Engineer 1 owns server, Claude prompt, data, matching, DTO definitions; Engineer 2 owns client UI/UX, app navigation, rendering, and accessibility.
+- Decide DTO files and API contract in first 20 minutes; Engineer 1 publishes mocks immediately. Engineer 2 can use hard-coded fake JSON in development but must clearly label it and replace it for final demo.
+- Avoid refactoring each other's directories without coordination. Commit working vertical slices. Keep main branch runnable.
+- If time runs short, prioritize complete English web journey, verified links, and failure handling over accounts, maps, native builds, dashboards, or extra AI features.
+
+DEMO SUCCESS TESTS
+- Client can move from need to a verified resource and a first action in under 2 minutes.
+- No hallucinated provider or unconfirmed availability.
+- Works at narrow phone width and keyboard navigation.
+- Useful "no match" and "resource couldn't help" states.
+- Human support remains optional and accessible.

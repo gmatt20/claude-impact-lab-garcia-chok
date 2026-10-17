@@ -1,0 +1,70 @@
+ROLE 2 — KOTLIN FRONTEND & CROSS-PLATFORM ENGINEER
+Project: Bridge | Read BRIDGE_SHARED_CONTEXT.txt before coding.
+
+YOUR MISSION
+Build a calm, welcoming, accessible, mobile-first Bridge experience for people experiencing homelessness. Make the web demo work end-to-end first, while keeping UI logic/components reusable on Android and iOS through Compose Multiplatform where feasible.
+
+OWNERSHIP
+- Compose Multiplatform web UI, screens, navigation and state management.
+- Reusable client/UI modules and shared API client where possible.
+- English/Spanish copy and language-switching UX.
+- Onboarding, needs category choice, single-question intake, resource cards, next-action view and recoverable error states.
+- Keyboard/screen-reader support, loading feedback, and low-bandwidth-conscious design.
+- Final demo experience and cross-browser/phone-width smoke tests.
+
+DO FIRST (FIRST 20 MINUTES)
+1. Read shared context, inspect repo/toolchains, and run a web hello-world build immediately.
+2. Align API contract/DTO models with Backend Engineer, obtain mock JSON responses.
+3. Implement a complete click-through demo using mock responses while server work proceeds.
+4. Integrate real endpoints once available. Don't spend most of the hackathon debugging native builds.
+
+USER JOURNEY (MVP)
+- Welcome: "Find your next step" / "Encuentra tu próximo paso" with English/Spanish selection and optional disclaimer.
+- Goal selection: safe place to sleep, food, health support, work, something else (no mandatory narrative).
+- Single follow-up if necessary: city / transport / urgent constraint; make every question optional or skippable when safe.
+- Resource results: show at most 3 suitable records; title, fit explanation, confirmed contact details, source, verification caveat.
+- Resource detail: primary action (call/open website), "What should I ask?", and one concrete next step.
+- If not suitable: "This didn't work" / "Try another option" / "Ask for help from a caseworker". Do not guilt or score progress.
+- Save/print/share plan only if easy; avoid account creation.
+
+UX NON-NEGOTIABLES
+- Prefer clarity over novelty. One task per screen; large readable text, high contrast, generous spacing, touch targets approximately 44px+, visible focus rings, semantic labels.
+- Plain-language short instructions; avoid jargon like "referral intake", "eligibility determination", and "AI confidence" in client UI.
+- Never require users to disclose diagnosis, legal status, exact sleeping location, SSN, or other private details.
+- Allow manual city selection; no GPS requirement. Provide Back, Skip, Start Over. Avoid infinite chat as the only workflow.
+- No shame-based copy, fake urgency, fake success celebrations, streaks, or gamification of homelessness.
+- Explicitly show "Availability not confirmed; contact provider" when appropriate.
+- Do not ask users to trust AI blindly. Resource entries should show trusted sources.
+- Text-only experience must work even without microphone or media downloads. Voice can be a stretch goal, not a dependency.
+- Don't auto-call, auto-email, or submit data to an organization. Require explicit user action.
+
+UI MODULES (SUGGESTED)
+shared/src/commonMain/kotlin/.../ui/screens/WelcomeScreen.kt
+shared/src/commonMain/kotlin/.../ui/screens/GoalScreen.kt
+shared/src/commonMain/kotlin/.../ui/screens/IntakeScreen.kt
+shared/src/commonMain/kotlin/.../ui/screens/ResourcesScreen.kt
+shared/src/commonMain/kotlin/.../ui/screens/NextStepScreen.kt
+shared/src/commonMain/kotlin/.../ui/components/*
+shared/src/commonMain/kotlin/.../ui/state/*
+webApp/... (actual entrypoint based on generated project)
+Do not assume these paths already exist: follow the real Gradle wizard layout.
+
+INTEGRATION
+- Consume shared DTOs and backend endpoints defined in BRIDGE_SHARED_CONTEXT.txt.
+- In early development, use mock data labeled as mock. Before pitching, replace with backend verified records.
+- Loading: "Finding possible options..."; error: "We couldn't load results. You can try again or ask for assistance."
+- Guard optional fields so missing website/phone/address doesn't create empty or broken buttons.
+- Build safe external links and tel: actions only for valid contact values; never invent contacts.
+
+ACCEPTANCE CRITERIA
+[ ] Main web path usable at a phone viewport with large touch targets.
+[ ] From Welcome -> Goal -> Result -> Next Step in under ~2 minutes.
+[ ] Every screen has understandable Back / Skip where relevant.
+[ ] English/Spanish copy present and language can be switched.
+[ ] Shows unknown availability clearly and handles empty results.
+[ ] Keyboard navigation and visible focus tested.
+[ ] API errors are recoverable; no blank crash page.
+[ ] Client never contains Claude API key.
+
+AGENT WORKING STYLE
+Ask at most two BLOCKING questions before coding (frontend scaffold / API contract). Make reasonable reversible assumptions and document them. Prefer reusable small Compose components and explicit UI state over giant files. Implement a functioning vertical slice first. Don't change server implementation or shared DTO schema without partner agreement. Run the web build and report exact status. Keep Android/iOS portability in mind but do not sacrifice a complete web demo for untested platform polish.

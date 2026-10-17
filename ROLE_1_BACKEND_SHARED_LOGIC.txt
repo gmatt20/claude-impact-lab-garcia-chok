@@ -1,0 +1,66 @@
+ROLE 1 — KOTLIN SHARED LOGIC & BACKEND ENGINEER
+Project: Bridge | Read BRIDGE_SHARED_CONTEXT.txt before coding.
+
+YOUR MISSION
+Own the reliable server-side intelligence that interprets user-described needs, matches only verified local community resources, and returns simple, actionable next steps. Support a web-first demo with Kotlin code portable where sensible to Android/iOS clients.
+
+OWNERSHIP
+- Kotlin/Ktor JVM backend: routes, validation, error handling, service layer, configuration.
+- Shared Kotlin Multiplatform DTOs, enums, serialization, API client contract; use commonMain where applicable.
+- Claude Messages API integration (server ONLY), with model configurable via CLAUDE_MODEL; default claude-haiku-5-5.
+- Deterministic curated resource catalog and eligibility/matching filters.
+- API responses for intake, matches, action plan, and user-facing non-match states.
+- Minimal verification/tests of data grounding and API results.
+
+DO FIRST (FIRST 20 MINUTES)
+1. Read shared context and inspect current repository/build setup; do not overwrite existing work.
+2. Agree API paths, JSON shapes, and DTO location with Frontend Engineer.
+3. Create the shared data classes and immediate mock endpoint responses. Announce endpoint contract to frontend partner.
+4. Build/test one runnable request before adding Claude.
+
+MVP API CONTRACT
+- POST /api/intake: input {message,language,context}; return {need,city,constraints,followUpQuestion,needsHumanHelp}.
+- POST /api/match: input {need,city,constraints,language}; return {resources,disclaimer}.
+- POST /api/plan: input {resourceId,language,constraints}; return {title,steps,questionsToAsk,alternatives,staffSummary}.
+- Consistent structured 4xx errors and predictable missing-data handling.
+- Allow skipping intake: predetermined category selection should still reach /match without AI.
+
+CLAUDE DESIGN
+- Claude should classify need, extract a few practical constraints, and optionally compose a brief follow-up or concise explanation.
+- Prefer the fast model claude-haiku-5-5 for intake. Consider claude-sonnet-5-5 ONLY if reliable extraction tests show a need and time/budget allow.
+- Use low-latency structured JSON output where supported; validate against Kotlin DTOs; clamp length and reject invalid values.
+- Prompt instructions: empathetic, straightforward, never moralize, one question at a time, no assumptions about identity/health, invite skip.
+- Resource names, locations, numbers, eligibility, and availability must ALWAYS originate from the curated dataset, not model memory.
+- Do not give clinical advice, infer diagnoses, or make medical placement/referral decisions.
+- Use model for language understanding, NOT as the source of truth. When it fails, fall back to straightforward category-based matching.
+
+RESOURCE DATA
+- Start with 8–15 genuinely verified, clearly sourced Orange County / Inland Empire support resources if authorized and available; prioritize IHH-provided/official data.
+- Store record ID, name, category, service area/city, vetted contact info, eligibility caveats, source URL, lastCheckedAt, and availability=unknown unless verified.
+- Never invent service details to fill a missing field. Null values are allowed.
+- Match by goal, city/service area, and key constraints; deterministic filtering first, AI wording second.
+- Return no-match explicitly; provide safe alternative to request human assistance or 211 where appropriate.
+
+PRIVACY AND SECURITY
+- Treat health data as sensitive. Use synthetic examples unless IHH explicitly authorizes the supplied data's usage, storage, and API transmission.
+- No default conversation persistence, no production telemetry of raw user messages, API key via server environment variable, never in web bundle.
+- Bound request size, configure CORS for approved client origin, and prevent secrets in error messages.
+- Do not represent this demo as HIPAA-compliant without review.
+
+FILES TO OWN (ILLUSTRATIVE)
+shared/src/commonMain/kotlin/.../models/*
+server/src/main/kotlin/.../routes/*
+server/src/main/kotlin/.../services/*
+server/src/main/kotlin/.../ai/*
+server/src/main/resources/resources.json
+
+ACCEPTANCE CRITERIA
+[ ] Shared DTOs compile and frontend partner knows them.
+[ ] Mock then live API flows are accessible to web client.
+[ ] All shown resource details trace to records/source URLs.
+[ ] No-match and model failure produce human-readable fallbacks.
+[ ] English and Spanish are supported at least for intake/plan text.
+[ ] Tests cover non-hallucination, missing location, empty dataset, invalid JSON and API failure.
+
+AGENT WORKING STYLE
+Ask at most two BLOCKING questions before starting (repo structure / resource data access). Make reasonable reversible assumptions and document them. Implement the smallest working vertical slice. Never make unrelated changes, never touch frontend-owned files without approval, never silently modify the contract. Prefer clear named functions and short modular files over complex abstractions. Run builds/tests and report exact results. If external data can't be verified, surface the limitation and use clearly marked demo-only data rather than fabricating it.
