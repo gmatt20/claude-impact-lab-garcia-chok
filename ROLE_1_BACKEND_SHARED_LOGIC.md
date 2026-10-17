@@ -7,14 +7,21 @@ override both.
 ## YOUR MISSION
 
 Own the server-side intelligence that interprets a client's described need, matches only the
-event's verified resource records, and returns a simple, actionable next step. Web-first, with
-Kotlin portable to Android/iOS where sensible.
+event's verified resource records, and returns a simple, actionable next step.
+
+> **Architecture changed on the day.** There is **no Kotlin/Ktor server**. The backend is
+> Supabase: Postgres holds the resource records and human-reviewed copy, and a single Edge
+> Function (`api`, TypeScript on Deno) serves `/api/bundle` and `/api/intake`. The Anthropic key
+> lives as a Supabase secret and never reaches the client. See `supabase/README.md`.
+>
+> Matching currently runs **client-side** in `composeApp/.../domain/Matcher.kt`, which is what
+> makes the offline path work. Do not move it to the server without agreeing that trade first.
 
 ## OWNERSHIP
 
-- Kotlin/Ktor JVM backend: routes, validation, error handling, service layer, configuration.
-- Shared KMP DTOs, enums, serialization, API client contract (`commonMain` where applicable).
-- Claude Messages API integration (**server only**), model configurable via `CLAUDE_MODEL`;
+- The Supabase Edge Function `api`: routes, validation, error handling, CORS.
+- The database schema, RLS policies, and migrations under `supabase/`.
+- Claude integration (**server only**), model configurable via `CLAUDE_MODEL`;
   default `claude-haiku-4-5`.
 - Deterministic matching and eligibility filters over the event seed file.
 - The safety router: danger, clinical, and unknown routes.
@@ -193,21 +200,23 @@ This harness runs on stage. Make its output readable.
 ## FILES TO OWN (ILLUSTRATIVE)
 
 ```
-shared/src/commonMain/kotlin/.../models/*          (DTOs mirroring the seed schema)
-server/src/main/kotlin/.../routes/*
-server/src/main/kotlin/.../services/*              (matching, safety router)
-server/src/main/kotlin/.../ai/*
-server/src/main/resources/oc-resources.seed.json   (copied from the event repo, unmodified)
-server/src/main/resources/explanations.json        (build-time generated, human-reviewed, committed)
-tools/generate-explanations.kts                    (one-off, NOT in the request path)
-tools/check-links.kts                              (build-time link + claim checker)
-tools/run-scenarios.kts                            (12-scenario eval harness)
+supabase/migrations/*.sql                 schema + RLS (applied; committed)
+supabase/functions/api/index.ts           the backend: /bundle, /intake, /health
+supabase/seed.sql                         40 records, generated + round-trip verified
+tools/generate-seed-sql.py                regenerates seed.sql from the event JSON
+tools/check-links.py                      build-time link + claim checker        (TODO)
+tools/run-scenarios.py                    12-scenario eval harness               (TODO)
 ```
+
+DTOs still live client-side in `composeApp/.../api/ApiModels.kt` and mirror the seed schema
+field-for-field. The database columns use the same names, so there is no mapping layer.
 
 ## ACCEPTANCE CRITERIA
 
-- [ ] Shared DTOs compile, mirror the seed schema field-for-field, and the frontend knows them.
-- [ ] Mock then live API flows are reachable from the web client.
+- [x] Schema + RLS applied; anon can read resources, write nothing anywhere.
+- [x] All 40 seed records imported and verified against the source file.
+- [x] `GET /api/bundle` returns the shape the client already parses.
+- [ ] `POST /api/intake` returns a classification (blocked on a workspace-scoped Anthropic key).
 - [ ] Every shown resource detail traces to a seed record, with `source_url` and `source_quote`.
 - [ ] `referral_required` resources return the referral route, never a walk-in address.
 - [ ] Constraint filtering passes C06 (no phone use) and C08 (no phone at all).
