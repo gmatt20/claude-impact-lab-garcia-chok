@@ -51,9 +51,11 @@ const preflight = () => new Response(null, { status: 204, headers: CORS });
 
 async function bundle() {
   const client = db();
-  const [resources, explanations] = await Promise.all([
+  const [resources, explanations, prep] = await Promise.all([
     client.from("resources").select("*").order("id"),
     client.from("explanations").select("resource_id, need, language, text").eq("kind", "fit"),
+    client.from("explanations").select("resource_id, language, kind, text")
+      .in("kind", ["fits", "bring", "heads_up"]),
   ]);
   if (resources.error) return json({ error: resources.error.message }, 500);
 
@@ -63,6 +65,19 @@ async function bundle() {
     ((nested[row.resource_id] ??= {})[row.need] ??= {})[row.language] = row.text;
   }
 
+  // "Before you go": resourceId -> language -> { fits[], bring[], headsUp }.
+  // Lists are stored newline-separated. Unreviewed rows are filtered out by RLS, so a
+  // record can legitimately have some languages or sections missing - render what is there.
+  type Prep = { fits: string[]; bring: string[]; headsUp: string | null };
+  const preparation: Record<string, Record<string, Prep>> = {};
+  for (const row of prep.data ?? []) {
+    const byLang = (preparation[row.resource_id] ??= {});
+    const entry = (byLang[row.language] ??= { fits: [], bring: [], headsUp: null });
+    if (row.kind === "heads_up") entry.headsUp = row.text;
+    else if (row.kind === "fits") entry.fits = row.text.split("\n");
+    else if (row.kind === "bring") entry.bring = row.text.split("\n");
+  }
+
   return json({
     generated: new Date().toISOString().slice(0, 10),
     disclaimer:
@@ -70,6 +85,7 @@ async function bundle() {
       "Confirm eligibility, hours and availability directly with the organization.",
     resources: resources.data ?? [],
     explanations: nested,
+    preparation,
   });
 }
 

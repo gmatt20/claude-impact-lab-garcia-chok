@@ -42,6 +42,21 @@ data class IntakeResponse(
 // The event seed file ({generated, disclaimer, resources}) is itself a valid Bundle,
 // which is what the app falls back to when no backend is reachable.
 
+/**
+ * "Before you go": what a caseworker would tell you before you contact a service.
+ * Written at build time from the record's own eligibility and notes, and only served
+ * once a person has approved it. Any section may be empty - render what is there.
+ */
+@Serializable
+data class Preparation(
+    /** Self-check questions: would this place serve someone like me? */
+    val fits: List<String> = emptyList(),
+    /** Documents or things to have ready, when the record implies any. */
+    val bring: List<String> = emptyList(),
+    /** One line on what might get in the way, e.g. "You'll need a referral to get in." */
+    val headsUp: String? = null,
+)
+
 @Serializable
 data class Bundle(
     val generated: String? = null,
@@ -49,6 +64,8 @@ data class Bundle(
     val resources: List<SeedResource> = emptyList(),
     /** resourceId -> need -> pre-generated, human-reviewed fit explanation. Optional. */
     val explanations: Map<String, Map<String, Localized>> = emptyMap(),
+    /** resourceId -> language code -> "Before you go". Optional; absent before review. */
+    val preparation: Map<String, Map<String, Preparation>> = emptyMap(),
 )
 
 /** One record from oc-resources.seed.json, plus the server's optional additions. */
