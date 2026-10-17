@@ -11,7 +11,7 @@ import json
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SEED = ROOT / "composeApp/src/wasmJsMain/resources/seed/oc-resources.seed.json"
+SEED = ROOT / "composeApp/src/commonMain/composeResources/files/oc-resources.seed.json"
 OUT = ROOT / "supabase/seed.sql"
 
 COLUMNS = [

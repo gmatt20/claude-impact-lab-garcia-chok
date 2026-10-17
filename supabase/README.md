@@ -47,6 +47,6 @@ supabase db push                     # migrations + seed.sql
 ```
 
 `supabase/seed.sql` is generated and round-trip verified against
-`composeApp/src/wasmJsMain/resources/seed/oc-resources.seed.json` (40 records,
+`composeApp/src/commonMain/composeResources/files/oc-resources.seed.json` (40 records,
 920 fields). Never hand-edit it, and never add a resource fact that isn't in a
 source record.

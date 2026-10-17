@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-// Frontend (web-first Compose Multiplatform). Backend adds ":server" and ":shared" here.
+// One Compose Multiplatform app for web, Android and iOS. The backend is Supabase (see supabase/).
 include(":composeApp")

@@ -3,9 +3,9 @@ package org.bridge.app.domain
 import org.bridge.app.api.BridgeApi
 import org.bridge.app.api.BridgeJson
 import org.bridge.app.api.Bundle
-import org.bridge.app.fetchBundledText
 import org.bridge.app.readCache
 import org.bridge.app.writeCache
+import org.bridge.app.resources.Res
 
 /** Where the bundle in use came from. */
 enum class BundleSource { NETWORK, CACHE, BUNDLED_SEED }
@@ -29,7 +29,8 @@ class BundleRepository(private val api: BridgeApi?) {
             }
             decode(readCache(key))?.let { return LoadedBundle(it, BundleSource.CACHE) }
         }
-        return decode(fetchBundledText(SEED_PATH))?.let { LoadedBundle(it, BundleSource.BUNDLED_SEED) }
+        val seed = runCatching { Res.readBytes(SEED_PATH).decodeToString() }.getOrNull()
+        return decode(seed)?.let { LoadedBundle(it, BundleSource.BUNDLED_SEED) }
     }
 
     private fun decode(json: String?): Bundle? =
@@ -37,6 +38,7 @@ class BundleRepository(private val api: BridgeApi?) {
             ?.takeIf { it.resources.isNotEmpty() }
 
     private companion object {
-        const val SEED_PATH = "seed/oc-resources.seed.json"
+        /** Shipped with every build (web, Android, iOS) as a Compose resource. */
+        const val SEED_PATH = "files/oc-resources.seed.json"
     }
 }

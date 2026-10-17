@@ -1,21 +1,28 @@
 package org.bridge.app
 
-/** Today's date as yyyy-mm-dd, or null if unknown. */
-expect fun todayIso(): String?
+/**
+ * Supabase Edge Function that serves /api/bundle and /api/intake.
+ * Safe to ship in the app: it is a public URL, and row level security - not secrecy -
+ * is what protects the data. No API key of any kind reaches the client.
+ */
+const val DEFAULT_API_BASE_URL = "https://ntgqdwfpkbmzodgygbxi.supabase.co/functions/v1"
 
 /**
- * Backend base URL. Defaults to the deployed Supabase Edge Function; override with
- * `?api=https://...` for a local backend, or `?api=off` to force the bundled-seed path.
- * Null means run entirely from the seed file shipped with the app.
+ * Backend base URL. Null means run entirely from the seed file shipped with the app.
+ * Web: defaults to [DEFAULT_API_BASE_URL]; `?api=https://...` overrides it and `?api=off` forces the seed path.
+ * Mobile: always [DEFAULT_API_BASE_URL]; with no connection the app falls back to cache, then seed.
  */
 expect fun configuredApiBaseUrl(): String?
 
-/** On-device key/value storage. May be unavailable (private mode); callers must tolerate failure. */
+/** On-device key/value storage. May be unavailable; callers must tolerate failure. */
 expect fun readCache(key: String): String?
 expect fun writeCache(key: String, value: String)
 
-/** Reads a file shipped with the app (served next to index.html), or null. */
-expect suspend fun fetchBundledText(path: String): String?
+/** Print the one-page card. [cardHtml] is escaped HTML from printCardHtml. */
+expect fun printHtml(cardHtml: String)
 
-/** Print a plain-HTML one-page card (Compose canvas content does not print well). */
-expect fun printHtml(html: String)
+/**
+ * True where third-party pages (provider websites, sources) open inside the app.
+ * Mobile shows them in a WebView when online; the web build opens a new tab instead.
+ */
+expect val hasInAppBrowser: Boolean

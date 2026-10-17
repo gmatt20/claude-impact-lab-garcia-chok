@@ -43,3 +43,20 @@ fun printCardHtml(r: SeedResource, steps: List<String>, questions: List<String>,
         append("</article>")
     }
 }
+
+/** Styles for the printed card. The web build has the same rules in index.html's print stylesheet. */
+private const val PRINT_CSS = """
+body { font: 14pt/1.45 Georgia, "Times New Roman", serif; color: #000; margin: 0; }
+.card { max-width: 7in; margin: 0 auto; }
+.brand { font: 600 11pt -apple-system, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 4pt; }
+h1 { font-size: 22pt; margin: 0 0 8pt; }
+h2 { font-size: 15pt; margin: 14pt 0 4pt; border-bottom: 1px solid #000; }
+.big { font-size: 20pt; font-weight: 700; margin: 4pt 0; }
+.note { border: 1.5px solid #000; padding: 6pt 8pt; }
+.small { font-size: 10.5pt; }
+li { margin: 3pt 0; }
+"""
+
+/** A standalone HTML document for native print APIs (Android PrintManager, iOS UIPrintInteractionController). */
+fun printableDocument(cardHtml: String): String =
+    "<!doctype html><html><head><meta charset=\"utf-8\"><style>$PRINT_CSS</style></head><body>$cardHtml</body></html>"
