@@ -28,10 +28,12 @@ class HttpBridgeApi(private val baseUrl: String) : BridgeApi {
         return response.body()
     }
 
-    // Short timeout: a hung spinner is worse than no AI.
+    // Bounded, but wide enough to actually succeed: classification measures ~2.7s warm, and a
+    // cold Edge Function boot adds more. 3s fell back almost every time. The "Finding options..."
+    // state is shown throughout, so the wait is visible rather than a hung spinner.
     override suspend fun intake(request: IntakeRequest): IntakeResponse {
         val response = client.post(url("/api/intake")) {
-            timeout { requestTimeoutMillis = 3_000 }
+            timeout { requestTimeoutMillis = 8_000 }
             contentType(ContentType.Application.Json)
             setBody(request)
         }

@@ -214,8 +214,10 @@ Our users have intermittent data. The AI is a convenience layer, never a depende
   - **Cached / offline:** app shell, UI copy (EN + ES), seed records, pre-generated explanations,
     next-step templates, printable card.
   - **Network-only with fallback:** `POST /api/intake`.
-- Detect connectivity by fetch failure with a short timeout (~3s), **not** `navigator.onLine`,
-  which reports false positives. A hung spinner is worse than no AI.
+- Detect connectivity by fetch failure with a bounded timeout, **not** `navigator.onLine`,
+  which reports false positives. Measured: intake takes ~2.7s warm, so the client allows **8s**
+  and shows "Finding options..." throughout. An earlier 3s limit fell back almost every time -
+  bound the wait, but make it wide enough to actually succeed.
 
 ## ACCESSIBILITY / DESIGN
 
