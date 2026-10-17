@@ -1,0 +1,51 @@
+{
+  "version": "sample-1",
+  "cities": ["Anaheim", "Santa Ana", "Orange"],
+  "resources": [
+    {
+      "id": "sample-shelter-1",
+      "name": "[SAMPLE] Example shelter (not a real service)",
+      "categories": ["shelter"],
+      "serviceArea": ["Anaheim"],
+      "description": { "en": "Schema example only.", "es": "Solo ejemplo de formato." },
+      "phone": "714-555-0100",
+      "website": "https://example.org",
+      "address": null,
+      "eligibilityNotes": { "en": "Must confirm with provider.", "es": "Hay que confirmar con el proveedor." },
+      "availability": "unknown",
+      "sourceUrl": "https://example.org/source",
+      "lastVerified": "2026-10-17"
+    },
+    {
+      "id": "sample-food-1",
+      "name": "[SAMPLE] Example food pantry (not a real service)",
+      "categories": ["food"],
+      "serviceArea": ["*"],
+      "description": null,
+      "phone": null,
+      "website": "https://example.org",
+      "address": null,
+      "eligibilityNotes": null,
+      "availability": "unknown",
+      "sourceUrl": "https://example.org/source",
+      "lastVerified": "2025-01-01"
+    }
+  ],
+  "explanations": {
+    "sample-shelter-1": {
+      "shelter": { "en": "Offers overnight shelter in Anaheim.", "es": "Ofrece albergue nocturno en Anaheim." }
+    }
+  },
+  "nextSteps": {
+    "shelter": {
+      "title": { "en": "Your next step", "es": "Tu próximo paso" },
+      "steps": [{ "en": "Call and ask if they have space tonight.", "es": "Llama y pregunta si tienen espacio esta noche." }],
+      "questionsToAsk": [{ "en": "What time should I arrive?", "es": "¿A qué hora debo llegar?" }],
+      "alternatives": []
+    }
+  },
+  "disclaimer": {
+    "en": "Confirm eligibility and availability directly.",
+    "es": "Confirma la elegibilidad y disponibilidad directamente."
+  }
+}
