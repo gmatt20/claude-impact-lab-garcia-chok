@@ -1,5 +1,5 @@
 ROLE 2 — KOTLIN FRONTEND & CROSS-PLATFORM ENGINEER
-Project: Bridge | Read BRIDGE_SHARED_CONTEXT.txt before coding.
+Project: Bridge | Read BRIDGE_SHARED_CONTEXT.md before coding.
 
 YOUR MISSION
 Build a calm, welcoming, accessible, mobile-first Bridge experience for people experiencing homelessness. Make the web demo work end-to-end first, while keeping UI logic/components reusable on Android and iOS through Compose Multiplatform where feasible.
@@ -10,6 +10,8 @@ OWNERSHIP
 - English/Spanish copy and language-switching UX.
 - Onboarding, needs category choice, single-question intake, resource cards, next-action view and recoverable error states.
 - Keyboard/screen-reader support, loading feedback, and low-bandwidth-conscious design.
+- Offline capability: service worker, cached bundle, and connectivity degradation.
+- The four client-side demo beats (see DEMO BEATS YOU OWN below).
 - Final demo experience and cross-browser/phone-width smoke tests.
 
 DO FIRST (FIRST 20 MINUTES)
@@ -26,6 +28,42 @@ USER JOURNEY (MVP)
 - Resource detail: primary action (call/open website), "What should I ask?", and one concrete next step.
 - If not suitable: "This didn't work" / "Try another option" / "Ask for help from a caseworker". Do not guilt or score progress.
 - Save/print/share plan only if easy; avoid account creation.
+
+DEMO BEATS YOU OWN (THE WOW FACTOR - FOUR OF THE FIVE ARE YOURS)
+Read "DEMO CHOREOGRAPHY" in BRIDGE_SHARED_CONTEXT.md first. These are what the judges actually see.
+
+1. OFFLINE COMPLETION (highest value, build it early)
+   - Service worker caches: app shell, UI copy EN+ES, and the GET /api/bundle payload
+     (resources, pre-generated explanations, next-step templates, disclaimers).
+   - With wifi off, Welcome -> Goal -> Results -> Next Step -> printable card must fully complete.
+   - Detect connectivity by fetch failure with a ~3s timeout, NOT navigator.onLine (it reports
+     false positives). On failure, silently route to the goal-category path. Never show a spinner
+     that outlives the timeout, and never show an error page for a missing AI call.
+   - Optional honest touch: a small, calm "Working offline" indicator. Never imply the AI is local.
+
+2. "WHY AM I SEEING THIS?"
+   - A disclosure on each resource card revealing source URL, last-verified date, and which record
+     fields drove the match. Plain language, not "match score" or "AI confidence".
+   - Must be reachable by keyboard and announced to screen readers.
+
+3. LANGUAGE TOGGLE MID-FLOW
+   - One tap flips all copy EN <-> ES with progress fully preserved. Must work offline.
+   - This is a two-second visual moment on stage - make the transition clean, not janky.
+
+4. ACCESS, DEMONSTRATED NOT CLAIMED
+   - The entire journey must be completable keyboard-only with visible focus rings, good enough to
+     tab through live on stage.
+   - Printable one-page card as the closing artifact: resource name, phone, address, questions to
+     ask, source and last-verified date. Use a real print stylesheet - test actual print preview.
+
+ALSO YOURS: THE EXPLICIT NO-MATCH STATE
+   The demo deliberately types something unanswerable ("a hotel in Tokyo tonight") to show we do
+   not invent providers. Make that state calm, clearly worded, and offer the caseworker-help route.
+   This screen gets stage time - treat it as a feature, not an edge case.
+
+ALSO YOURS: ALWAYS-REACHABLE CRISIS ROUTE
+   A persistent, static "Need help now?" affordance with 988 / 911 / 211 copy. No AI in the path,
+   no detection logic, works offline. Required for a public demo of this product.
 
 UX NON-NEGOTIABLES
 - Prefer clarity over novelty. One task per screen; large readable text, high contrast, generous spacing, touch targets approximately 44px+, visible focus rings, semantic labels.
@@ -50,9 +88,11 @@ webApp/... (actual entrypoint based on generated project)
 Do not assume these paths already exist: follow the real Gradle wizard layout.
 
 INTEGRATION
-- Consume shared DTOs and backend endpoints defined in BRIDGE_SHARED_CONTEXT.txt.
+- Consume shared DTOs and backend endpoints defined in BRIDGE_SHARED_CONTEXT.md.
 - In early development, use mock data labeled as mock. Before pitching, replace with backend verified records.
+- Consume GET /api/bundle once and cache it; every screen except free-text intake must render from the cache with no network.
 - Loading: "Finding possible options..."; error: "We couldn't load results. You can try again or ask for assistance."
+- A failed /api/intake is NOT an error state - degrade to goal-category selection silently.
 - Guard optional fields so missing website/phone/address doesn't create empty or broken buttons.
 - Build safe external links and tel: actions only for valid contact values; never invent contacts.
 
@@ -65,6 +105,12 @@ ACCEPTANCE CRITERIA
 [ ] Keyboard navigation and visible focus tested.
 [ ] API errors are recoverable; no blank crash page.
 [ ] Client never contains Claude API key.
+[ ] Full journey completes with wifi disabled (test by actually turning wifi off).
+[ ] /api/intake timeout or failure degrades to the category path with no visible error.
+[ ] "Why am I seeing this?" shows source URL and last-verified date, keyboard reachable.
+[ ] Language toggles mid-flow without losing progress, offline included.
+[ ] Printable card tested in real print preview.
+[ ] Crisis route reachable from every screen, offline included.
 
 AGENT WORKING STYLE
 Ask at most two BLOCKING questions before coding (frontend scaffold / API contract). Make reasonable reversible assumptions and document them. Prefer reusable small Compose components and explicit UI state over giant files. Implement a functioning vertical slice first. Don't change server implementation or shared DTO schema without partner agreement. Run the web build and report exact status. Keep Android/iOS portability in mind but do not sacrifice a complete web demo for untested platform polish.

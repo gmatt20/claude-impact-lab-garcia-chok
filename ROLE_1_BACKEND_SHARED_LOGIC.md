@@ -1,5 +1,5 @@
 ROLE 1 — KOTLIN SHARED LOGIC & BACKEND ENGINEER
-Project: Bridge | Read BRIDGE_SHARED_CONTEXT.txt before coding.
+Project: Bridge | Read BRIDGE_SHARED_CONTEXT.md before coding.
 
 YOUR MISSION
 Own the reliable server-side intelligence that interprets user-described needs, matches only verified local community resources, and returns simple, actionable next steps. Support a web-first demo with Kotlin code portable where sensible to Android/iOS clients.
@@ -7,9 +7,11 @@ Own the reliable server-side intelligence that interprets user-described needs, 
 OWNERSHIP
 - Kotlin/Ktor JVM backend: routes, validation, error handling, service layer, configuration.
 - Shared Kotlin Multiplatform DTOs, enums, serialization, API client contract; use commonMain where applicable.
-- Claude Messages API integration (server ONLY), with model configurable via CLAUDE_MODEL; default claude-haiku-5-5.
+- Claude Messages API integration (server ONLY), with model configurable via CLAUDE_MODEL; default claude-haiku-4-5.
 - Deterministic curated resource catalog and eligibility/matching filters.
 - API responses for intake, matches, action plan, and user-facing non-match states.
+- Build-time generation of pre-reviewed fit explanations (see OFFLINE SUPPORT below).
+- The single cacheable offline payload the client ships with.
 - Minimal verification/tests of data grounding and API results.
 
 DO FIRST (FIRST 20 MINUTES)
@@ -27,8 +29,11 @@ MVP API CONTRACT
 
 CLAUDE DESIGN
 - Claude should classify need, extract a few practical constraints, and optionally compose a brief follow-up or concise explanation.
-- Prefer the fast model claude-haiku-5-5 for intake. Consider claude-sonnet-5-5 ONLY if reliable extraction tests show a need and time/budget allow.
-- Use low-latency structured JSON output where supported; validate against Kotlin DTOs; clamp length and reject invalid values.
+- Prefer the fast model claude-haiku-4-5 for intake. Consider claude-sonnet-5 ONLY if reliable extraction tests show a need and time/budget allow.
+- Use the official Java SDK from Kotlin: implementation("com.anthropic:anthropic-java:2.34.0"), client via AnthropicOkHttpClient.fromEnv(). Do NOT hand-roll Ktor HTTP calls against the Messages API.
+- Structured output is output_config: { format: {...} } (the older output_format parameter is deprecated). Use strict: true on tool definitions. Validate against Kotlin DTOs; clamp length and reject invalid values.
+- claude-haiku-4-5 does NOT accept output_config.effort (it errors), and its thinking config uses the legacy budget_tokens form. For intake, use neither: plain fast structured output.
+- Hard client-visible timeout of ~3s on the Claude call. On timeout, invalid JSON, or any API error, return the deterministic category path result rather than an error. The frontend must never show a spinner that outlives the timeout.
 - Prompt instructions: empathetic, straightforward, never moralize, one question at a time, no assumptions about identity/health, invite skip.
 - Resource names, locations, numbers, eligibility, and availability must ALWAYS originate from the curated dataset, not model memory.
 - Do not give clinical advice, infer diagnoses, or make medical placement/referral decisions.
@@ -40,6 +45,21 @@ RESOURCE DATA
 - Never invent service details to fill a missing field. Null values are allowed.
 - Match by goal, city/service area, and key constraints; deterministic filtering first, AI wording second.
 - Return no-match explicitly; provide safe alternative to request human assistance or 211 where appropriate.
+
+OFFLINE SUPPORT (DEMO-CRITICAL - SEE "DEMO CHOREOGRAPHY" IN SHARED CONTEXT)
+The stage demo turns wifi off and completes the journey. That only works if you ship the data.
+- Pre-generate fitExplanation strings for every resource x goal pairing at BUILD TIME via a one-off
+  script (not in the request path). Commit the output. A human reads every string before it ships.
+  This is simultaneously the offline enabler and our strongest safety control: no user-facing
+  sentence about a resource is generated live and unreviewed.
+- Expose GET /api/bundle returning ONE cacheable payload: resources, pre-generated explanations,
+  next-step templates, and disclaimer copy (EN + ES). The client caches this; everything except
+  /api/intake must be answerable from it.
+- /api/intake stays network-only. Every other user-visible capability must be satisfiable offline.
+- Guard the pre-generated copy: reject any string matching a banned-phrase list before commit -
+  "open now", "beds available", "you qualify", "guaranteed", "accepts your". fitExplanation is
+  model-authored prose ABOUT a record and is the one place a fabricated claim can still appear.
+- Add GET /api/health so the frontend can distinguish "server down" from "no results".
 
 PRIVACY AND SECURITY
 - Treat health data as sensitive. Use synthetic examples unless IHH explicitly authorizes the supplied data's usage, storage, and API transmission.
@@ -53,6 +73,8 @@ server/src/main/kotlin/.../routes/*
 server/src/main/kotlin/.../services/*
 server/src/main/kotlin/.../ai/*
 server/src/main/resources/resources.json
+server/src/main/resources/explanations.json   (build-time generated, human-reviewed, committed)
+tools/generate-explanations.kts               (one-off build-time script, NOT in request path)
 
 ACCEPTANCE CRITERIA
 [ ] Shared DTOs compile and frontend partner knows them.
@@ -61,6 +83,10 @@ ACCEPTANCE CRITERIA
 [ ] No-match and model failure produce human-readable fallbacks.
 [ ] English and Spanish are supported at least for intake/plan text.
 [ ] Tests cover non-hallucination, missing location, empty dataset, invalid JSON and API failure.
+[ ] GET /api/bundle returns everything the client needs to run with no further network calls.
+[ ] Pre-generated fit explanations are committed, human-reviewed, and pass the banned-phrase check.
+[ ] Claude timeout/failure returns a usable category-path result, never a 5xx to the client.
+[ ] Model ID is claude-haiku-4-5 and a live request succeeds (verify before hour 2).
 
 AGENT WORKING STYLE
 Ask at most two BLOCKING questions before starting (repo structure / resource data access). Make reasonable reversible assumptions and document them. Implement the smallest working vertical slice. Never make unrelated changes, never touch frontend-owned files without approval, never silently modify the contract. Prefer clear named functions and short modular files over complex abstractions. Run builds/tests and report exact results. If external data can't be verified, surface the limitation and use clearly marked demo-only data rather than fabricating it.
