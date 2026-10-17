@@ -5,6 +5,8 @@ package org.bridge.app
 import kotlinx.browser.document
 import kotlinx.browser.localStorage
 import kotlinx.browser.window
+import kotlinx.coroutines.await
+import org.w3c.fetch.Response
 import org.w3c.dom.url.URLSearchParams
 
 private fun isoDateJs(): String = js("new Date().toISOString().slice(0, 10)")
@@ -21,6 +23,11 @@ actual fun readCache(key: String): String? = runCatching { localStorage.getItem(
 actual fun writeCache(key: String, value: String) {
     runCatching { localStorage.setItem(key, value) }
 }
+
+actual suspend fun fetchBundledText(path: String): String? = runCatching {
+    val response = window.fetch(path).await<Response>()
+    if (!response.ok) null else response.text().await<JsString>().toString()
+}.getOrNull()
 
 actual fun printHtml(html: String) {
     val root = document.getElementById("print-root") ?: return

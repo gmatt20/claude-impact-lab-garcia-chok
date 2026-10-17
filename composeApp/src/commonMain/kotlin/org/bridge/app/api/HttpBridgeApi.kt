@@ -16,8 +16,6 @@ import io.ktor.serialization.kotlinx.json.json
 class ApiException(message: String) : Exception(message)
 
 class HttpBridgeApi(private val baseUrl: String) : BridgeApi {
-    override val isMock = false
-
     private val client = HttpClient {
         install(ContentNegotiation) { json(BridgeJson) }
         install(HttpTimeout)

@@ -15,6 +15,9 @@ kotlin {
             commonWebpackConfig {
                 outputFileName = "composeApp.js"
             }
+            testTask {
+                useKarma { useChromeHeadless() }
+            }
         }
         binaries.executable()
     }
@@ -30,6 +33,9 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }

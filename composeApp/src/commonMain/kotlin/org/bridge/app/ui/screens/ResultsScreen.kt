@@ -15,10 +15,10 @@ import org.bridge.app.ui.components.SecondaryButton
 @Composable
 fun ResultsScreen(
     strings: Strings,
-    language: String,
     bundle: Bundle,
     result: MatchResult,
-    today: String?,
+    safetyMode: Boolean,
+    cannotCall: Boolean,
     onChoose: (Match) -> Unit,
     onHelp: () -> Unit,
 ) {
@@ -26,22 +26,20 @@ fun ResultsScreen(
         is MatchResult.Found -> {
             ScreenTitle(strings.resultsTitle)
             result.matches.forEach { match ->
-                ResourceCard(match, fitExplanation(bundle, match, language), strings, language, today, showContacts = false) {
+                ResourceCard(
+                    match, fitExplanation(bundle, match, strings.language.code), strings,
+                    safetyMode, cannotCall, detailed = false,
+                ) {
                     PrimaryButton(strings.chooseThis, { onChoose(match) })
                 }
             }
-            SecondaryButton(strings.askCaseworker, onHelp)
+            SecondaryButton(strings.askStaff, onHelp)
         }
         // Explicit, calm no-match: we never invent a provider to fill the gap.
-        is MatchResult.CityNotCovered -> NoMatch(strings, strings.cityNotCovered(result.city), onHelp)
-        MatchResult.NoMatch -> NoMatch(strings, null, onHelp)
+        MatchResult.NoMatch -> {
+            ScreenTitle(strings.resultsNone)
+            Body(strings.resultsNoneBody)
+            PrimaryButton(strings.askStaff, onHelp)
+        }
     }
-}
-
-@Composable
-private fun NoMatch(strings: Strings, detail: String?, onHelp: () -> Unit) {
-    ScreenTitle(strings.resultsNone)
-    detail?.let { Body(it) }
-    Body(strings.resultsNoneBody)
-    PrimaryButton(strings.askCaseworker, onHelp)
 }

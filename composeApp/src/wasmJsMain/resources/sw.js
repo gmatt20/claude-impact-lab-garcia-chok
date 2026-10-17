@@ -2,8 +2,8 @@
 // Same-origin GETs are served network-first with a cache fallback, so a fresh deploy is
 // picked up when online and the last good copy is used when offline. The resource bundle
 // itself is also stored in localStorage by the app (works even if this worker is unavailable).
-const CACHE = "bridge-shell-v1";
-const SHELL = ["./", "index.html", "composeApp.js", "manifest.webmanifest"];
+const CACHE = "bridge-shell-v2";
+const SHELL = ["./", "index.html", "composeApp.js", "manifest.webmanifest", "seed/oc-resources.seed.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

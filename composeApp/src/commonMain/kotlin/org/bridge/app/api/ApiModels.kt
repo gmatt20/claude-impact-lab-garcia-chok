@@ -1,9 +1,10 @@
 package org.bridge.app.api
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-// Mirrors the contract in BRIDGE_SHARED_CONTEXT.md. When the backend publishes its ":shared"
-// DTO module, delete this file and depend on that instead.
+// Client mirror of the contract in BRIDGE_SHARED_CONTEXT.md. Field names on the wire match the
+// event seed file exactly. When the backend publishes its `shared` models, switch to those.
 
 /** Text in each supported language, keyed by language code ("en", "es"). */
 typealias Localized = Map<String, String>
@@ -15,7 +16,7 @@ fun Localized.pick(language: String): String? = this[language] ?: this["en"]
 @Serializable
 data class IntakeContext(
     val city: String? = null,
-    val goal: String? = null,
+    val need: String? = null,
 )
 
 @Serializable
@@ -27,51 +28,56 @@ data class IntakeRequest(
 
 @Serializable
 data class IntakeResponse(
-    val need: String,
+    val need: String? = null,
     val city: String? = null,
+    /** Flat slugs, e.g. "no-phone". */
     val constraints: List<String> = emptyList(),
     val followUpQuestion: String? = null,
+    /** "normal" | "danger" | "clinical" | "unknown" */
+    val route: String = "normal",
     val needsHumanHelp: Boolean = false,
 )
 
-// ---- GET /api/bundle (PROPOSED shape — confirm with backend) ----
-// One cacheable payload; every screen except free-text intake renders from it offline.
+// ---- GET /api/bundle ----
+// The event seed file ({generated, disclaimer, resources}) is itself a valid Bundle,
+// which is what the app falls back to when no backend is reachable.
 
 @Serializable
 data class Bundle(
-    val version: String,
-    /** Cities the catalog covers. A city outside this list is an explicit no-match. */
-    val cities: List<String> = emptyList(),
-    val resources: List<BundleResource> = emptyList(),
-    /** resourceId -> goal -> pre-generated, human-reviewed fit explanation. */
+    val generated: String? = null,
+    val disclaimer: String? = null,
+    val resources: List<SeedResource> = emptyList(),
+    /** resourceId -> need -> pre-generated, human-reviewed fit explanation. Optional. */
     val explanations: Map<String, Map<String, Localized>> = emptyMap(),
-    /** Keyed by resourceId first, then by goal as a fallback. */
-    val nextSteps: Map<String, NextStepTemplate> = emptyMap(),
-    val disclaimer: Localized = emptyMap(),
 )
 
+/** One record from oc-resources.seed.json, plus the server's optional additions. */
 @Serializable
-data class BundleResource(
+data class SeedResource(
     val id: String,
     val name: String,
-    /** Goal codes this resource serves: shelter, food, health, work, other. */
-    val categories: List<String> = emptyList(),
-    /** City names served; "*" means anywhere in the catalog's region. */
-    val serviceArea: List<String> = emptyList(),
-    val description: Localized? = null,
+    val organization: String? = null,
+    val category: String,
+    val tags: List<String> = emptyList(),
+    val description: String? = null,
+    val services: List<String> = emptyList(),
+    val eligibility: String? = null,
+    val population: List<String> = emptyList(),
+    @SerialName("how_to_access") val howToAccess: String? = null,
+    @SerialName("referral_required") val referralRequired: Boolean? = null,
     val phone: String? = null,
-    val website: String? = null,
     val address: String? = null,
-    val eligibilityNotes: Localized? = null,
-    val availability: String = "unknown",
-    val sourceUrl: String? = null,
-    val lastVerified: String? = null,
-)
-
-@Serializable
-data class NextStepTemplate(
-    val title: Localized = emptyMap(),
-    val steps: List<Localized> = emptyList(),
-    val questionsToAsk: List<Localized> = emptyList(),
-    val alternatives: List<Localized> = emptyList(),
+    val city: String? = null,
+    val hours: String? = null,
+    val languages: List<String>? = null,
+    val cost: String? = null,
+    val website: String? = null,
+    @SerialName("source_url") val sourceUrl: String? = null,
+    @SerialName("source_quote") val sourceQuote: String? = null,
+    @SerialName("verified_date") val verifiedDate: String? = null,
+    val confidence: String? = null,
+    val notes: String? = null,
+    // Server additions from /api/match (absent in the raw seed file).
+    val fitExplanation: String? = null,
+    val addressWithheld: Boolean = false,
 )

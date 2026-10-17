@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,31 +21,41 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
+import org.bridge.app.api.SeedResource
 import org.bridge.app.api.displayHost
-import org.bridge.app.api.pick
+import org.bridge.app.api.phoneNumbers
 import org.bridge.app.api.safeWebUrl
-import org.bridge.app.api.telUri
+import org.bridge.app.domain.AccessKind
 import org.bridge.app.domain.Match
 import org.bridge.app.domain.MatchReason
-import org.bridge.app.i18n.Goal
+import org.bridge.app.domain.accessKind
+import org.bridge.app.domain.addressIsDestination
+import org.bridge.app.domain.isAddressWithheld
+import org.bridge.app.domain.isConfidentialLocation
+import org.bridge.app.i18n.Language
 import org.bridge.app.i18n.Strings
+import org.bridge.app.i18n.formatDate
+import org.bridge.app.i18n.needLabel
 import org.bridge.app.ui.theme.BridgeColors
 
-/** Records older than this many days get a "may have changed" note. */
-private const val STALE_AFTER_DAYS = 90
-
+/**
+ * A seed record, rendered field by field. Null is the normal case in this data
+ * (half the records have no address), so every field is optional and nothing is filled in.
+ */
 @Composable
 fun ResourceCard(
     match: Match,
     fitExplanation: String?,
     strings: Strings,
-    language: String,
-    today: String?,
-    showContacts: Boolean,
-    footer: @Composable () -> Unit,
+    safetyMode: Boolean,
+    cannotCall: Boolean,
+    detailed: Boolean,
+    footer: @Composable ColumnScope.() -> Unit,
 ) {
     val r = match.resource
+    val kind = accessKind(r)
     Column(
         Modifier.fillMaxWidth()
             .background(BridgeColors.Surface, RoundedCornerShape(14.dp))
@@ -52,50 +63,85 @@ fun ResourceCard(
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            r.name,
-            style = MaterialTheme.typography.titleLarge,
-            color = BridgeColors.Ink,
-            modifier = Modifier.semantics { heading() },
-        )
-        r.description?.pick(language)?.takeIf { it.isNotBlank() }?.let { Body(it) }
-        fitExplanation?.takeIf { it.isNotBlank() }?.let {
-            Text(strings.whyFit, style = MaterialTheme.typography.titleMedium, color = BridgeColors.Primary)
-            Body(it)
-        }
-        r.eligibilityNotes?.pick(language)?.takeIf { it.isNotBlank() }?.let {
-            Text(strings.eligibility, style = MaterialTheme.typography.titleMedium, color = BridgeColors.Ink)
-            Body(it)
-        }
-        if (r.availability != "confirmed") Notice(strings.availabilityUnknown)
-        if (showContacts) ContactActions(match, strings)
-        r.lastVerified?.let { Body(strings.lastChecked(it), muted = true) }
-        if (isStale(r.lastVerified, today)) Notice(strings.notRecentlyChecked)
+        Text(r.name, style = MaterialTheme.typography.titleLarge, color = BridgeColors.Ink, modifier = Modifier.semantics { heading() })
+        r.organization?.takeIf { it.isNotBlank() && it != r.name }?.let { Body(it, muted = true) }
+
+        Label(strings.howToGetHelp)
+        Body(strings.accessExplain(kind))
+        if (r.referralRequired == null && kind != AccessKind.REFERRAL) Body(strings.referralUnknown, muted = true)
+
+        fitExplanation?.takeIf { it.isNotBlank() }?.let { Label(strings.whyFit); Body(it) }
+
+        if (detailed) Details(r, strings, safetyMode, kind, cannotCall)
+
+        ConfidenceNote(r, strings)
+        Notice(strings.availabilityUnknown)
+        strings.formatDate(r.verifiedDate)?.let { Body(strings.checkedOn(it), muted = true) }
         WhyAmISeeingThis(match, strings)
         footer()
     }
 }
 
 @Composable
-private fun ContactActions(match: Match, strings: Strings) {
-    val r = match.resource
-    telUri(r.phone)?.let { uri ->
-        ExternalActionButton(strings.call(r.phone!!), ExternalTarget(uri, strings.confirmCall(r.phone)), strings, primary = true)
+private fun Details(r: SeedResource, strings: Strings, safetyMode: Boolean, kind: AccessKind, cannotCall: Boolean) {
+    if (strings.language == Language.ES) Body(strings.sourceInEnglish, muted = true)
+    r.description?.takeIf { it.isNotBlank() }?.let { Body(it) }
+    // Requirements are shown uncut; summarising could hide one.
+    r.eligibility?.takeIf { it.isNotBlank() }?.let { Label(strings.eligibility); Body(it) }
+    r.cost?.takeIf { it.isNotBlank() }?.let { Label(strings.cost); Body(it) }
+    r.hours?.takeIf { it.isNotBlank() }?.let { Label(strings.hours); Body(it) }
+    r.languages?.takeIf { it.isNotEmpty() }?.let { Label(strings.languages); Body(it.joinToString(", ")) }
+    ContactActions(r, strings, kind, cannotCall)
+    AddressBlock(r, strings, safetyMode)
+}
+
+/** Primary action follows how_to_access, never the address (the locked-door rule). */
+@Composable
+private fun ContactActions(r: SeedResource, strings: Strings, kind: AccessKind, cannotCall: Boolean) {
+    val phones = phoneNumbers(r.phone)
+    val website = safeWebUrl(r.website)
+    // Show the phone text verbatim, so numbers we can't turn into a button (e.g. 1-800-RUNAWAY) still appear.
+    r.phone?.takeIf { it.isNotBlank() }?.let { Label(strings.phoneLabel); Body(it) }
+    val callIsPrimary = !cannotCall && kind in setOf(AccessKind.PHONE, AccessKind.APPOINTMENT, AccessKind.MIXED, AccessKind.UNKNOWN)
+    val webIsPrimary = !callIsPrimary && kind in setOf(AccessKind.ONLINE, AccessKind.APPOINTMENT, AccessKind.MIXED, AccessKind.UNKNOWN)
+    phones.forEachIndexed { i, p ->
+        ExternalActionButton(strings.call(p.display), ExternalTarget(p.tel, strings.confirmCall(p.display)), strings, primary = callIsPrimary && i == 0)
     }
-    safeWebUrl(r.website)?.let { url ->
+    website?.let { url ->
         val host = displayHost(url)
-        ExternalActionButton(strings.openWebsite(host), ExternalTarget(url, strings.confirmOpen(host)), strings)
-    }
-    r.address?.takeIf { it.isNotBlank() }?.let {
-        Text(strings.address, style = MaterialTheme.typography.titleMedium, color = BridgeColors.Ink)
-        Body(it)
+        ExternalActionButton(strings.openWebsite(host), ExternalTarget(url, strings.confirmOpen(host)), strings, primary = webIsPrimary)
     }
 }
 
-/** Plain-language disclosure of what drove the match and where the record came from. */
+@Composable
+private fun AddressBlock(r: SeedResource, strings: Strings, safetyMode: Boolean) {
+    if (isAddressWithheld(r, safetyMode)) {
+        if (r.address != null || isConfidentialLocation(r)) Notice(strings.addressWithheld)
+        return
+    }
+    val address = r.address?.takeIf { it.isNotBlank() } ?: return
+    Label(strings.address)
+    Body(address)
+    when {
+        accessKind(r) == AccessKind.REFERRAL -> Notice(strings.addressNeedsReferral)
+        !addressIsDestination(r) -> Body(strings.addressOffice, muted = true)
+    }
+}
+
+@Composable
+private fun ConfidenceNote(r: SeedResource, strings: Strings) {
+    when (r.confidence) {
+        "medium" -> Notice(strings.confidenceMedium)
+        "low" -> Notice(strings.confidenceLow, BridgeColors.Danger, BridgeColors.DangerSoft)
+        else -> Unit
+    }
+}
+
+/** The source, verbatim: quote, link, checked date, notes. Grounding made visible. */
 @Composable
 private fun WhyAmISeeingThis(match: Match, strings: Strings) {
-    var open by rememberSaveable(match.resource.id) { mutableStateOf(false) }
+    val r = match.resource
+    var open by rememberSaveable(r.id) { mutableStateOf(false) }
     NavTextButton(if (open) strings.hideWhy else strings.whyAmISeeing, { open = !open })
     AnimatedVisibility(open) {
         Column(
@@ -103,40 +149,32 @@ private fun WhyAmISeeingThis(match: Match, strings: Strings) {
                 .background(BridgeColors.PrimarySoft, RoundedCornerShape(10.dp))
                 .padding(14.dp)
                 .semantics { liveRegion = LiveRegionMode.Polite },
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             match.reasons.forEach { Body("• " + reasonText(it, strings)) }
-            val source = safeWebUrl(match.resource.sourceUrl)
-            Body("• " + (source?.let(strings.reasonSource) ?: strings.reasonNoSource))
-            match.resource.lastVerified?.let { Body("• " + strings.reasonChecked(it)) }
+            r.sourceQuote?.takeIf { it.isNotBlank() }?.let {
+                Label(strings.sourceSays)
+                Text("“$it”", style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic, color = BridgeColors.Ink)
+            }
+            safeWebUrl(r.sourceUrl)?.let { url ->
+                ExternalActionButton(strings.sourceLink(displayHost(url)), ExternalTarget(url, strings.confirmOpen(displayHost(url))), strings)
+            }
+            strings.formatDate(r.verifiedDate)?.let { Body(strings.checkedOn(it)) }
+            ConfidenceNote(r, strings)
+            r.notes?.takeIf { it.isNotBlank() }?.let { Label(strings.notesTitle); Body(it, muted = true) }
         }
     }
 }
 
 private fun reasonText(reason: MatchReason, strings: Strings): String = when (reason) {
-    is MatchReason.Offers -> strings.reasonOffers(
-        Goal.entries.firstOrNull { it.code == reason.goal }?.let(strings.goalLabel) ?: reason.goal,
-    )
-    is MatchReason.ServesCity -> strings.reasonCity(reason.city)
-    MatchReason.ServesWholeArea -> strings.reasonWholeArea
+    is MatchReason.Offers -> strings.reasonOffers(needLabel(reason.need, strings.language))
+    is MatchReason.InYourCity -> strings.reasonInYourCity(reason.city)
+    is MatchReason.InOtherCity -> strings.reasonInOtherCity(reason.city)
+    MatchReason.NotTiedToCity -> strings.reasonNotTiedToCity
+    MatchReason.NoPhoneNeeded -> strings.reasonNoPhoneNeeded
 }
 
-/** Compares ISO dates (yyyy-mm-dd). A missing or unparseable date counts as stale. */
-internal fun isStale(lastVerified: String?, today: String?): Boolean {
-    val verified = lastVerified?.let(::epochDay) ?: return true
-    val now = today?.let(::epochDay) ?: return false
-    return now - verified > STALE_AFTER_DAYS
-}
-
-private fun epochDay(iso: String): Long? {
-    val p = iso.take(10).split('-').mapNotNull { it.toIntOrNull() }
-    if (p.size != 3) return null
-    val (y, m, d) = p
-    // Days-from-civil (Howard Hinnant); enough for comparing dates.
-    val yy = if (m <= 2) y - 1 else y
-    val era = (if (yy >= 0) yy else yy - 399) / 400
-    val yoe = yy - era * 400
-    val doy = (153 * (m + (if (m > 2) -3 else 9)) + 2) / 5 + d - 1
-    val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
-    return era * 146097L + doe - 719468
+@Composable
+private fun Label(text: String) {
+    Text(text, style = MaterialTheme.typography.titleMedium, color = BridgeColors.Ink)
 }

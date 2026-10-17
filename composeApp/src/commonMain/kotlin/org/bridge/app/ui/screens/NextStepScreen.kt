@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.bridge.app.domain.Match
-import org.bridge.app.domain.Plan
 import org.bridge.app.i18n.Strings
 import org.bridge.app.ui.components.Body
 import org.bridge.app.ui.components.ResourceCard
@@ -20,30 +19,25 @@ import org.bridge.app.ui.components.SectionTitle
 @Composable
 fun NextStepScreen(
     strings: Strings,
-    language: String,
     match: Match,
-    plan: Plan,
+    steps: List<String>,
+    questions: List<String>,
     fitExplanation: String?,
-    today: String?,
+    safetyMode: Boolean,
+    cannotCall: Boolean,
     onPrint: () -> Unit,
     onDidNotWork: () -> Unit,
     onHelp: () -> Unit,
 ) {
-    ScreenTitle(plan.title ?: strings.nextStepTitle)
-    NumberedList(plan.steps)
-    // Contact details always come from the resource record, never from template text.
-    ResourceCard(match, fitExplanation, strings, language, today, showContacts = true) {}
-    if (plan.questionsToAsk.isNotEmpty()) {
-        SectionTitle(strings.whatToAsk)
-        BulletList(plan.questionsToAsk)
-    }
-    if (plan.alternatives.isNotEmpty()) {
-        SectionTitle(strings.otherOptions)
-        BulletList(plan.alternatives)
-    }
+    ScreenTitle(strings.nextStepTitle)
+    NumberedList(steps)
+    // Contact details come only from the record, never from template text.
+    ResourceCard(match, fitExplanation, strings, safetyMode, cannotCall, detailed = true) {}
+    SectionTitle(strings.whatToAsk)
+    BulletList(questions)
     SecondaryButton(strings.printCard, onPrint)
     SecondaryButton(strings.didntWork, onDidNotWork)
-    SecondaryButton(strings.askCaseworker, onHelp)
+    SecondaryButton(strings.askStaff, onHelp)
 }
 
 @Composable

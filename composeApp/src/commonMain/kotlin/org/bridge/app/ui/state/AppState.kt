@@ -11,12 +11,14 @@ import org.bridge.app.api.IntakeContext
 import org.bridge.app.api.IntakeRequest
 import org.bridge.app.domain.BundleRepository
 import org.bridge.app.domain.BundleSource
+import org.bridge.app.domain.CONSTRAINT_NO_PHONE
+import org.bridge.app.domain.CONSTRAINT_PHONE_HARD
 import org.bridge.app.domain.LoadedBundle
 import org.bridge.app.domain.Match
 import org.bridge.app.domain.MatchResult
 import org.bridge.app.domain.matchResources
-import org.bridge.app.i18n.Goal
 import org.bridge.app.i18n.Language
+import org.bridge.app.i18n.Need
 
 sealed interface BundleState {
     data object Loading : BundleState
@@ -26,24 +28,31 @@ sealed interface BundleState {
 
 sealed interface Screen {
     data object Welcome : Screen
-    data object Goal : Screen
+    data object Need : Screen
+    data object MoreNeeds : Screen
     data object City : Screen
+    data object PhoneAccess : Screen
     data class FollowUp(val question: String) : Screen
     data object Results : Screen
     data class NextStep(val match: Match) : Screen
     data object HumanHelp : Screen
+    data object Danger : Screen
+    data object Clinical : Screen
 }
+
+enum class PhoneAccess(val constraint: String?) { YES(null), HARD(CONSTRAINT_PHONE_HARD), NONE(CONSTRAINT_NO_PHONE) }
 
 /** What the user has chosen so far. Kept in memory only; nothing about the user is persisted. */
 data class Answers(
-    val goal: String? = null,
+    val need: String? = null,
     val city: String? = null,
+    /** Flat slugs, e.g. "no-phone". */
+    val constraints: List<String> = emptyList(),
     val message: String = "",
     val followUpAnswer: String = "",
-    val constraints: List<String> = emptyList(),
 )
 
-class AppState(private val api: BridgeApi, private val scope: CoroutineScope) {
+class AppState(private val api: BridgeApi?, private val scope: CoroutineScope) {
     private val repository = BundleRepository(api)
 
     var language by mutableStateOf(Language.EN)
@@ -56,14 +65,18 @@ class AppState(private val api: BridgeApi, private val scope: CoroutineScope) {
     /** True while waiting (at most ~3s) on free-text intake. */
     var interpreting by mutableStateOf(false)
         private set
-    /** Set when intake was unavailable; the Goal screen gently suggests tapping a category instead. */
+    /** Set when intake was unavailable; the need screen gently suggests tapping a tile instead. */
     var intakeFellBack by mutableStateOf(false)
         private set
-    /** Resources the user said didn't work; hidden so they can try another. */
+    /** Set by the danger route: hide every address until Start over. */
+    var safetyMode by mutableStateOf(false)
+        private set
+    /** Records the user said didn't work; hidden so they can try another. */
     var triedIds by mutableStateOf(setOf<String>())
         private set
 
-    val isMock get() = api.isMock
+    /** Free text needs the backend; without one we only offer the tiles. */
+    val canInterpretText get() = api != null
     val isOffline get() = (bundle as? BundleState.Ready)?.loaded?.source == BundleSource.CACHE
     val current: Screen get() = stack.last()
     val canGoBack get() = stack.size > 1
@@ -80,8 +93,8 @@ class AppState(private val api: BridgeApi, private val scope: CoroutineScope) {
     val results: MatchResult?
         get() {
             val b = (bundle as? BundleState.Ready)?.loaded?.bundle ?: return null
-            val goal = answers.goal ?: return MatchResult.NoMatch
-            return matchResources(b, goal, answers.city, triedIds)
+            val need = answers.need ?: return MatchResult.NoMatch
+            return matchResources(b, need, answers.city, answers.constraints, triedIds)
         }
 
     private fun push(screen: Screen) { if (current != screen) stack = stack + screen }
@@ -97,31 +110,43 @@ class AppState(private val api: BridgeApi, private val scope: CoroutineScope) {
         answers = Answers()
         triedIds = emptySet()
         intakeFellBack = false
+        safetyMode = false
         stack = listOf(Screen.Welcome)
     }
 
-    fun begin() = push(Screen.Goal)
+    fun begin() = push(Screen.Need)
+    fun showMoreNeeds() = push(Screen.MoreNeeds)
     fun showHumanHelp() = push(Screen.HumanHelp)
 
-    fun chooseGoal(goal: Goal) {
+    fun chooseNeed(need: Need) {
         cancelIntake()
-        answers = answers.copy(goal = goal.code, constraints = emptyList())
+        answers = answers.copy(need = need.code)
         push(Screen.City)
     }
 
     fun chooseCity(city: String?) {
         answers = answers.copy(city = city)
+        push(Screen.PhoneAccess)
+    }
+
+    fun choosePhoneAccess(access: PhoneAccess?) {
+        val others = answers.constraints - setOf(CONSTRAINT_NO_PHONE, CONSTRAINT_PHONE_HARD)
+        answers = answers.copy(constraints = others + listOfNotNull(access?.constraint))
         push(Screen.Results)
     }
+
+    val phoneAccess: PhoneAccess?
+        get() = PhoneAccess.entries.firstOrNull { it.constraint != null && it.constraint in answers.constraints }
 
     fun updateMessage(value: String) { answers = answers.copy(message = value.take(500)) }
     fun updateFollowUp(value: String) { answers = answers.copy(followUpAnswer = value.take(300)) }
 
     /**
-     * Free-text path. Claude is a convenience: on timeout or any failure we quietly
-     * fall back to the goal tiles, with no error screen.
+     * Free-text path. Claude is a convenience: on timeout or any failure we quietly fall back
+     * to the need tiles, with no error screen. The intake `route` drives safety handling.
      */
     fun submitMessage() {
+        val client = api ?: return
         val text = listOf(answers.message, answers.followUpAnswer).filter { it.isNotBlank() }.joinToString("\n")
         if (text.isBlank()) return
         val askedFollowUp = current is Screen.FollowUp
@@ -129,7 +154,7 @@ class AppState(private val api: BridgeApi, private val scope: CoroutineScope) {
         interpreting = true
         intakeJob = scope.launch {
             val intake = runCatching {
-                api.intake(IntakeRequest(text, language.code, IntakeContext(city = answers.city, goal = answers.goal)))
+                client.intake(IntakeRequest(text, language.code, IntakeContext(city = answers.city, need = answers.need)))
             }.getOrNull()
             interpreting = false
             if (intake == null) {
@@ -138,14 +163,19 @@ class AppState(private val api: BridgeApi, private val scope: CoroutineScope) {
                 return@launch
             }
             intakeFellBack = false
+            val need = Need.fromCode(intake.need)?.code
             answers = answers.copy(
-                goal = intake.need.takeIf { n -> Goal.entries.any { it.code == n } } ?: Goal.OTHER.code,
+                need = need,
                 city = intake.city ?: answers.city,
-                constraints = intake.constraints,
+                constraints = (answers.constraints + intake.constraints).distinct(),
             )
             when {
+                intake.route == "danger" -> { safetyMode = true; push(Screen.Danger) }
+                intake.route == "clinical" -> push(Screen.Clinical)
+                intake.route == "unknown" -> { answers = answers.copy(need = null); push(Screen.Results) }
                 intake.needsHumanHelp -> push(Screen.HumanHelp)
                 intake.followUpQuestion != null && !askedFollowUp -> push(Screen.FollowUp(intake.followUpQuestion))
+                need == null -> { intakeFellBack = true; if (askedFollowUp) stack = stack.dropLast(1) }
                 else -> push(Screen.Results)
             }
         }
@@ -153,9 +183,15 @@ class AppState(private val api: BridgeApi, private val scope: CoroutineScope) {
 
     fun skipFollowUp() = push(Screen.Results)
 
+    /** From the clinical screen: back to choosing a need, keeping nothing from the question. */
+    fun leaveClinical() {
+        answers = answers.copy(message = "", followUpAnswer = "")
+        stack = listOf(Screen.Welcome, Screen.Need)
+    }
+
     fun chooseMatch(match: Match) = push(Screen.NextStep(match))
 
-    /** "This didn't work": hide that resource and return to the list. */
+    /** "This didn't work": hide that record and return to the list. */
     fun matchDidNotWork(match: Match) {
         triedIds = triedIds + match.resource.id
         back()

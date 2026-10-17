@@ -40,7 +40,6 @@ fun BridgeScaffold(
     strings: Strings,
     language: Language,
     onLanguageChange: (Language) -> Unit,
-    showMockBanner: Boolean,
     showOffline: Boolean,
     onNeedHelp: (() -> Unit)?,
     onBack: (() -> Unit)?,
@@ -50,16 +49,6 @@ fun BridgeScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(BridgeColors.Background)) {
-        if (showMockBanner) {
-            Text(
-                strings.mockBanner,
-                color = BridgeColors.OnPrimary,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().background(BridgeColors.Danger).padding(6.dp),
-            )
-        }
         Row(
             Modifier.fillMaxWidth().background(BridgeColors.Surface).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
