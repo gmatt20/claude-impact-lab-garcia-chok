@@ -3,6 +3,9 @@ package org.bridge.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -46,9 +49,12 @@ fun BridgeScaffold(
     onStartOver: (() -> Unit)?,
     /** Changes whenever the screen changes, so each screen starts scrolled to the top. */
     screenKey: Any,
+    /** False for screens that manage their own scrolling (the in-app browser). */
+    scrollable: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().background(BridgeColors.Background)) {
+    // safeDrawing keeps content clear of the status bar, notch, home indicator and keyboard on mobile.
+    Column(Modifier.fillMaxSize().background(BridgeColors.Background).windowInsetsPadding(WindowInsets.safeDrawing)) {
         Row(
             Modifier.fillMaxWidth().background(BridgeColors.Surface).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -76,15 +82,19 @@ fun BridgeScaffold(
                     .semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
-        Box(
-            Modifier.fillMaxSize().verticalScroll(remember(screenKey) { ScrollState(0) }),
-            contentAlignment = Alignment.TopCenter,
-        ) {
-            Column(
-                Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                content = content,
-            )
+        if (!scrollable) {
+            Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        } else {
+            Box(
+                Modifier.fillMaxSize().verticalScroll(remember(screenKey) { ScrollState(0) }),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                Column(
+                    Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    content = content,
+                )
+            }
         }
     }
 }

@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Bridge" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bridge_background</item>
+    </style>
+    <color name="bridge_background">#FBF8F3</color>
+    <color name="bridge_primary">#1F5C4E</color>
+</resources>

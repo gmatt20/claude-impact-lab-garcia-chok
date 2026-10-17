@@ -7,10 +7,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalUriHandler
 import org.bridge.app.i18n.Strings
 
-/** A pending call or link the user must confirm before Bridge leaves the page. */
+/**
+ * Opens a web page inside the app, where the platform has an in-app browser (mobile).
+ * Null on the web, where pages open in a new tab through the system URI handler.
+ */
+val LocalInAppPageOpener = staticCompositionLocalOf<((String) -> Unit)?> { null }
+
+/** A pending call or link the user must confirm before it happens. */
 data class ExternalTarget(val uri: String, val description: String)
 
 /**
@@ -26,6 +33,7 @@ fun ExternalActionButton(
 ) {
     var pending by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+    val openInApp = LocalInAppPageOpener.current
     if (primary) PrimaryButton(label, { pending = true }) else SecondaryButton(label, { pending = true })
     if (pending) {
         AlertDialog(
@@ -35,7 +43,9 @@ fun ExternalActionButton(
             confirmButton = {
                 NavTextButton(strings.confirm, {
                     pending = false
-                    runCatching { uriHandler.openUri(target.uri) }
+                    val isWebPage = target.uri.startsWith("https://") || target.uri.startsWith("http://")
+                    if (isWebPage && openInApp != null) openInApp(target.uri)
+                    else runCatching { uriHandler.openUri(target.uri) }
                 })
             },
             dismissButton = { NavTextButton(strings.cancel, { pending = false }) },

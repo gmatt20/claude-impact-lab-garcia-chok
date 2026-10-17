@@ -38,6 +38,8 @@ sealed interface Screen {
     data object HumanHelp : Screen
     data object Danger : Screen
     data object Clinical : Screen
+    /** A third-party page shown in the in-app browser (mobile only). */
+    data class WebPage(val url: String) : Screen
 }
 
 enum class PhoneAccess(val constraint: String?) { YES(null), HARD(CONSTRAINT_PHONE_HARD), NONE(CONSTRAINT_NO_PHONE) }
@@ -88,6 +90,18 @@ class AppState(private val api: BridgeApi?, private val scope: CoroutineScope) {
     fun loadBundle() {
         bundle = BundleState.Loading
         scope.launch { bundle = repository.load()?.let { BundleState.Ready(it) } ?: BundleState.Unavailable }
+    }
+
+    /**
+     * Called when the device regains a connection: swap in a fresh bundle if we were running from
+     * the saved copy. Never blanks the screen; a failed refresh just keeps what we have.
+     */
+    fun refreshIfOffline() {
+        if (!isOffline) return
+        scope.launch {
+            val fresh = repository.load()
+            if (fresh?.source == BundleSource.NETWORK) bundle = BundleState.Ready(fresh)
+        }
     }
 
     val results: MatchResult?
@@ -190,6 +204,8 @@ class AppState(private val api: BridgeApi?, private val scope: CoroutineScope) {
     }
 
     fun chooseMatch(match: Match) = push(Screen.NextStep(match))
+
+    fun openWebPage(url: String) = push(Screen.WebPage(url))
 
     /** "This didn't work": hide that record and return to the list. */
     fun matchDidNotWork(match: Match) {
