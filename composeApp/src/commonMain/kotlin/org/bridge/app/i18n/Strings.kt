@@ -102,6 +102,9 @@ data class Strings(
     val confirm: String,
     val cancel: String,
     val months: List<String>,
+    val pageNeedsInternet: String,
+    val pageNeedsInternetBody: String,
+    val pageFailed: String,
 )
 
 private val CommonQuestionsEn = listOf("Can you help someone in my situation?", "What should I bring?", "What are your hours?")
@@ -225,11 +228,14 @@ val English = Strings(
     clinicalTitle = "That's a question for your care team",
     clinicalBody = "Bridge can't answer questions about medicine or health. Please ask the nurse or an IHH staff member. They can help you, or connect you with a doctor.",
     clinicalBack = "Look for something else",
-    confirmLeaveTitle = "Leave Bridge?",
+    confirmLeaveTitle = "Continue?",
     confirmCall = { "This will start a phone call to $it." },
     confirmOpen = { "This will open $it." },
     confirm = "Yes, continue",
     cancel = "Cancel",
+    pageNeedsInternet = "Internet connection required",
+    pageNeedsInternetBody = "This page is on another website, so it needs the internet. Everything else in Bridge works without it. You can try again when you're connected, or write down the address below.",
+    pageFailed = "This page didn't load. The website may be down or your connection may be weak. You can try again, or write down the address below.",
     months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
 )
 
@@ -351,11 +357,14 @@ val Spanish = Strings(
     clinicalTitle = "Esa pregunta es para tu equipo de cuidado",
     clinicalBody = "Bridge no puede responder preguntas sobre medicinas o salud. Por favor pregunta a la enfermera o a alguien del personal de IHH. Te pueden ayudar o conectar con un médico.",
     clinicalBack = "Buscar otra cosa",
-    confirmLeaveTitle = "¿Salir de Bridge?",
+    confirmLeaveTitle = "¿Continuar?",
     confirmCall = { "Esto iniciará una llamada a $it." },
     confirmOpen = { "Esto abrirá $it." },
     confirm = "Sí, continuar",
     cancel = "Cancelar",
+    pageNeedsInternet = "Se necesita conexión a internet",
+    pageNeedsInternetBody = "Esta página está en otro sitio web, así que necesita internet. Todo lo demás en Bridge funciona sin conexión. Puedes intentar de nuevo cuando tengas conexión, o anotar la dirección de abajo.",
+    pageFailed = "Esta página no cargó. Puede que el sitio esté caído o que tu conexión sea débil. Puedes intentar de nuevo, o anotar la dirección de abajo.",
     months = listOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"),
 )
 
