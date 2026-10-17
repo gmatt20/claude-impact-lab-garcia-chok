@@ -1,6 +1,7 @@
 package org.bridge.app.domain
 
 import org.bridge.app.api.Bundle
+import org.bridge.app.api.Preparation
 import org.bridge.app.api.SeedResource
 import org.bridge.app.api.pick
 
@@ -65,6 +66,15 @@ fun matchResources(
 /** Reviewed fit text, if the bundle or server supplied one. Never generated on the device. */
 fun fitExplanation(bundle: Bundle, match: Match, language: String): String? =
     bundle.explanations[match.resource.id]?.get(match.need)?.pick(language) ?: match.resource.fitExplanation
+
+/**
+ * "Before you go" for a resource, in the reader's language, falling back to English.
+ * Null when nothing has been written and approved for it yet.
+ */
+fun preparationFor(bundle: Bundle, resourceId: String, language: String): Preparation? {
+    val byLanguage = bundle.preparation[resourceId] ?: return null
+    return byLanguage[language] ?: byLanguage["en"]
+}
 
 /** Cities that appear in the records, for the optional city question. */
 fun knownCities(bundle: Bundle): List<String> =

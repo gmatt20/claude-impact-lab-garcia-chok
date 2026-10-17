@@ -79,6 +79,11 @@ data class Strings(
     val stepsFor: (AccessKind, Boolean, Boolean) -> List<String>,
     val questionsFor: (AccessKind) -> List<String>,
     val whatToAsk: String,
+    /** "Before you go" - see Preparation. */
+    val beforeYouGo: String,
+    val doesThisFit: String,
+    val whatToBring: String,
+    val headsUpTitle: String,
     val printCard: String,
     val printHelpLine: String,
     val didntWork: String,
@@ -211,6 +216,10 @@ val English = Strings(
         else CommonQuestionsEn
     },
     whatToAsk = "What to ask",
+    beforeYouGo = "Before you go",
+    doesThisFit = "Does this sound like you?",
+    whatToBring = "What to bring",
+    headsUpTitle = "Worth knowing",
     printCard = "Print this card",
     printHelpLine = "For other services in Orange County, call 2-1-1.",
     didntWork = "This didn't work: show other options",
@@ -340,6 +349,10 @@ val Spanish = Strings(
         else CommonQuestionsEs
     },
     whatToAsk = "Qué preguntar",
+    beforeYouGo = "Antes de ir",
+    doesThisFit = "¿Esto se parece a tu situación?",
+    whatToBring = "Qué llevar",
+    headsUpTitle = "Bueno saber",
     printCard = "Imprimir esta tarjeta",
     printHelpLine = "Para otros servicios en el Condado de Orange, llama al 2-1-1.",
     didntWork = "Esto no funcionó: ver otras opciones",

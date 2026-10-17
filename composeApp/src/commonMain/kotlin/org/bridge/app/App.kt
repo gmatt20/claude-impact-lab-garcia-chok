@@ -11,6 +11,7 @@ import org.bridge.app.api.phoneNumbers
 import org.bridge.app.domain.accessKind
 import org.bridge.app.domain.cannotCall
 import org.bridge.app.domain.fitExplanation
+import org.bridge.app.domain.preparationFor
 import org.bridge.app.domain.knownCities
 import org.bridge.app.i18n.stringsFor
 import org.bridge.app.ui.PlatformBackHandler
@@ -112,8 +113,16 @@ fun App(api: BridgeApi? = remember { createApi() }) {
                                     NextStepScreen(
                                         strings, screen.match, steps, questions,
                                         fitExplanation(bundle, screen.match, strings.language.code),
+                                        preparationFor(bundle, r.id, strings.language.code),
                                         state.safetyMode, noCalls,
-                                        onPrint = { printHtml(printCardHtml(r, steps, questions, strings, state.safetyMode)) },
+                                        onPrint = {
+                                            printHtml(
+                                                printCardHtml(
+                                                    r, steps, questions, strings, state.safetyMode,
+                                                    preparationFor(bundle, r.id, strings.language.code),
+                                                ),
+                                            )
+                                        },
                                         onDidNotWork = { state.matchDidNotWork(screen.match) },
                                         onHelp = state::showHumanHelp,
                                     )

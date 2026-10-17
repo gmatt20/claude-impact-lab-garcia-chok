@@ -1,5 +1,6 @@
 package org.bridge.app.ui
 
+import org.bridge.app.api.Preparation
 import org.bridge.app.api.SeedResource
 import org.bridge.app.domain.AccessKind
 import org.bridge.app.domain.accessKind
@@ -9,7 +10,14 @@ import org.bridge.app.i18n.Strings
 import org.bridge.app.i18n.formatDate
 
 /** One-page printable card as plain HTML: name, how to access, phone, what to ask, source and checked date. */
-fun printCardHtml(r: SeedResource, steps: List<String>, questions: List<String>, strings: Strings, safetyMode: Boolean): String {
+fun printCardHtml(
+    r: SeedResource,
+    steps: List<String>,
+    questions: List<String>,
+    strings: Strings,
+    safetyMode: Boolean,
+    preparation: Preparation? = null,
+): String {
     fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
     return buildString {
         append("<article class=\"card\" lang=\"${strings.language.code}\">")
@@ -33,6 +41,22 @@ fun printCardHtml(r: SeedResource, steps: List<String>, questions: List<String>,
         append("<h2>${esc(strings.whatToAsk)}</h2><ul>")
         questions.forEach { append("<li>☐ ${esc(it)}</li>") }
         append("</ul>")
+        // "Before you go": approved copy only, so the printed page carries no unreviewed text.
+        preparation?.let { prep ->
+            if (prep.fits.isNotEmpty()) {
+                append("<h2>${esc(strings.doesThisFit)}</h2><ul>")
+                prep.fits.forEach { append("<li>☐ ${esc(it)}</li>") }
+                append("</ul>")
+            }
+            if (prep.bring.isNotEmpty()) {
+                append("<h2>${esc(strings.whatToBring)}</h2><ul>")
+                prep.bring.forEach { append("<li>☐ ${esc(it)}</li>") }
+                append("</ul>")
+            }
+            prep.headsUp?.takeIf { it.isNotBlank() }?.let {
+                append("<p class=\"note\">${esc(strings.headsUpTitle)}: ${esc(it)}</p>")
+            }
+        }
         r.eligibility?.let { append("<p>${esc(strings.eligibility)}: ${esc(it)}</p>") }
         append("<p class=\"note\">${esc(strings.availabilityUnknown)}</p>")
         append("<p class=\"small\">")
