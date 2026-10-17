@@ -44,32 +44,63 @@ resource records. Three things shape it:
 
 ## Try it
 
+Requires JDK 21+ (built on 26) and the bundled Gradle wrapper. Nothing else to install.
+
 ```bash
-# exact steps to run it on a laptop
+git clone https://github.com/gmatt20/claude-impact-lab-garcia-chok.git
+cd claude-impact-lab-garcia-chok
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun   # open the printed localhost URL
 ```
 
-Requires _[JDK / Gradle versions]_. Environment variables, server-side only:
+Run the safety tests:
 
+```bash
+./gradlew :composeApp:wasmJsTest
 ```
-ANTHROPIC_API_KEY=sk-ant-...      # never in the repo or the web bundle
-CLAUDE_MODEL=claude-haiku-4-5
-CORS_ALLOWED_ORIGIN=http://localhost:8080
-```
+
+The app talks to the deployed Supabase backend by default. Override it per-page:
+
+| URL suffix | Effect |
+|---|---|
+| *(none)* | Uses the deployed Supabase Edge Function |
+| `?api=off` | Forces the bundled-seed path (offline behaviour with wifi on) |
+| `?api=https://...` | Points at a different backend |
+
+**No API keys are needed to run the client.** The only secret in the system is
+`ANTHROPIC_API_KEY`, which lives as a Supabase Edge Function secret and never reaches the browser.
+See [supabase/README.md](supabase/README.md) for the backend.
 
 ## What is real and what is mocked
 
 | Part | Status |
 |---|---|
-| Resource data (40 entries from the event seed file) | real, sourced, checked 2026-10-13 |
-| Need matching and access-route logic | _[working / partly working / mocked]_ |
-| Claude free-text intake | _[…]_ |
-| Spanish copy | _[…]_ |
-| Offline mode | _[…]_ |
-| Printable summary | _[…]_ |
+| Resource data (40 entries from the event seed file) | **real** — sourced, every entry checked 2026-10-13 |
+| Database + row level security | **working** — anon reads resources, writes nothing anywhere |
+| `GET /api/bundle` | **working** |
+| Need matching, access routes, locked-door rule | **working** — client-side, runs offline |
+| Safety routes (danger / clinical) | **working** — screens and deterministic keyword net |
+| Spanish | **working** — all 94 UI strings; resource text stays in its source language |
+| Offline mode | **working** — service worker + cached bundle + seed fallback |
+| Printable summary | **working** |
+| `POST /api/intake` (Claude free-text) | **blocked** — needs a workspace-scoped Anthropic key |
+| AI-written fit explanations | **not built** — table and RLS exist, no reviewed rows yet |
+| Staff flagging of stale records | **not built** — table exists, no UI |
 
 ## Where it gets things wrong
 
-_[What we saw it miss, and what we would not trust it with yet. Be specific — judges trust this.]_
+- **Matching is single-category.** Seven of the twelve event scenarios name more than one need
+  (C01 is `shelter` + `id-documents`); we match the first and ignore the rest. Record `tags` are
+  not used in matching at all, so C01's walker and missing ID do not affect ranking.
+- **We cannot tell you if a bed is free.** Nothing here is live availability, and we say so on
+  every card rather than implying otherwise.
+- **The data is a snapshot.** Every record was checked on 2026-10-13 and some will already be
+  wrong — operators, hours and phone numbers change. We show the checked date and the source
+  quote so a person can judge for themselves.
+- **Free-text intake is the weakest link.** When Claude is unreachable the app silently falls back
+  to tapping a category, which is the behaviour we want — but it means the typed-sentence path is
+  the first thing to degrade.
+- **We would not trust it unsupervised** with anyone in crisis. The danger and clinical routes
+  hand off to a person on purpose.
 
 ## Next steps
 

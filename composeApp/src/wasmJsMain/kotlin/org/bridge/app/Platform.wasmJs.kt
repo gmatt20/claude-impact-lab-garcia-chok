@@ -13,9 +13,19 @@ private fun isoDateJs(): String = js("new Date().toISOString().slice(0, 10)")
 
 actual fun todayIso(): String? = runCatching { isoDateJs() }.getOrNull()
 
+/**
+ * Supabase Edge Function that serves /api/bundle and /api/intake.
+ * Safe to ship in the bundle: it is a public URL, and row level security - not secrecy -
+ * is what protects the data. No API key of any kind reaches the client.
+ */
+private const val DEFAULT_API_BASE_URL = "https://ntgqdwfpkbmzodgygbxi.supabase.co/functions/v1"
+
 actual fun configuredApiBaseUrl(): String? {
     val fromQuery = URLSearchParams(window.location.search.toJsString()).get("api")
+    // `?api=off` forces the bundled-seed path, for testing offline behaviour with wifi on.
+    if (fromQuery == "off") return null
     return fromQuery?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+        ?: DEFAULT_API_BASE_URL
 }
 
 actual fun readCache(key: String): String? = runCatching { localStorage.getItem(key) }.getOrNull()
