@@ -30,16 +30,22 @@ const CONSTRAINTS = [
 const db = () =>
   createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "content-type, authorization, apikey, x-client-info",
+  "Access-Control-Max-Age": "86400",
+};
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "content-type, authorization, apikey",
-      "Cache-Control": "no-store",
-    },
+    headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
+
+// A 204 must have a null body - building one with a body throws, which turned every
+// browser preflight into a 500 and blocked the POST that followed.
+const preflight = () => new Response(null, { status: 204, headers: CORS });
 
 // ---------------------------------------------------------------- bundle
 
@@ -97,7 +103,8 @@ const CLASSIFY_TOOL = {
   input_schema: {
     type: "object" as const,
     properties: {
-      need: { type: ["string", "null"], enum: [...CATEGORIES, null], description: "The single closest category, or null if unclear." },
+      // Strict mode rejects an enum on a ["string","null"] union, so use a sentinel instead of null.
+      need: { type: "string", enum: [...CATEGORIES, "unclear"], description: "The single closest category, or \"unclear\" if you cannot tell." },
       city: { type: ["string", "null"], description: "An Orange County city they named, exactly as they said it. Null if they did not name one." },
       constraints: { type: "array", items: { type: "string", enum: CONSTRAINTS }, description: "Only practical constraints they actually stated." },
       route: { type: "string", enum: ["normal", "danger", "clinical", "unknown"], description: "danger: they say they are unsafe or someone may harm them. clinical: a medical, legal or immigration question. unknown: you cannot tell what they need." },
@@ -172,6 +179,7 @@ async function intake(req: Request) {
 
   // Validate everything the model returned; drop anything not in our closed sets.
   const lower = text.toLowerCase();
+  // "unclear" is the sentinel for "model could not tell"; everything outside the closed set is dropped.
   const need = typeof result.need === "string" && CATEGORIES.includes(result.need) ? result.need : null;
   const constraints = Array.isArray(result.constraints)
     ? [...new Set(result.constraints.filter((c) => CONSTRAINTS.includes(c)))]
@@ -198,7 +206,7 @@ async function intake(req: Request) {
 // ---------------------------------------------------------------- router
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return json({}, 204);
+  if (req.method === "OPTIONS") return preflight();
   const path = new URL(req.url).pathname.replace(/\/+$/, "");
 
   if (path.endsWith("/bundle") && req.method === "GET") return bundle();
